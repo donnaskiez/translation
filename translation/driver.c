@@ -109,6 +109,12 @@ void test(int* number)
 
 	PML4E pml4e = { 0 };
 	ReadPhysicalAddress( ( cr3.Bits.PhysicalAddress << 12 ) + (virtual.Bits.Pml4Index * 8), &pml4e, sizeof(PML4E));
+
+	DEBUG_LOG( "pml4 physical: %llx, pml4e phys shifted %llx, virtual pdpt index: %llx, added together: %llx", 
+		pml4e.Bits.PhysicalAddress,
+		( pml4e.Bits.PhysicalAddress << 12 ), 
+		( virtual.Bits.PdptIndex ), 
+		( pml4e.Bits.PhysicalAddress << 12 ) + virtual.Bits.PdptIndex * 8 );
 }
 
 NTSTATUS DriverEntry(
