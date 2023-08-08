@@ -5,6 +5,7 @@ extern ReadPhysicalAddress : proto
 .code
 
 TranslateAddress PROC
+
 	push rbp
 	mov rbp, rsp
 	push rax
@@ -30,10 +31,19 @@ TranslateAddress PROC
 	mov r8, 8			; length of copy 
 	call ReadPhysicalAddress
 
+	mov rbx, [rsp + 8]	; move result into rbx
+	bt rbx, 0			; check if the present bit is set
+	sbb rbx, rbx		; rbx will be 0xffff.. if its set and 0x000.. if its not set
+	test rbx, rbx
+	je _end				; if the present bit is not set, jump to end
+
+_end:
 	add rsp, 8
 	pop rdx
+	pop rax
 	pop rbp
 	ret
+
 TranslateAddress ENDP
 
 END
