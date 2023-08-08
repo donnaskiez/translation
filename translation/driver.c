@@ -126,7 +126,6 @@ NTSTATUS DriverEntry(
 	INT number = 10;
 	DEBUG_LOG( "number addr: %llx", (UINT64 ) &number);
     test( &number );
-	__debugbreak();
 	TranslateAddress(&number);
 	DEBUG_LOG( "Done" );
 	return STATUS_SUCCESS;
