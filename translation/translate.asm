@@ -1,5 +1,6 @@
 
 extern MmCopyMemory : proto
+extern ReadPhysicalAddress : proto
 
 .code
 
@@ -8,7 +9,6 @@ TranslateAddress PROC
 	mov rbp, rsp
 	push rax
 	push rdx
-	sub rsp, 120		; space for 15 local QWORDS
 
 	mov rax, cr3		; Get our cr3 physical address
 	shr rax, 12
@@ -25,17 +25,13 @@ TranslateAddress PROC
 	pop rax
 	add rcx, rax		; Add our cr3 physical with our pml4 offset
 
-	mov rdx, rcx		; 2nd argument being the final pml4 address to read
-	lea rcx, [rsp + 8]	; Destination for pml4e after read
+	sub rsp, 8
+	lea rdx, [rsp + 8]	; Destination for pml4e after read
 	mov r8, 8			; length of copy 
-	mov r9, 1
-	lea rax, [rsp + 16]	
-	push rax			; 5th argument pushed on stack (returned bytes)
-	call MmCopyMemory
+	call ReadPhysicalAddress
 
-	add rsp, 120
+	add rsp, 8
 	pop rdx
-	pop rax
 	pop rbp
 	ret
 TranslateAddress ENDP

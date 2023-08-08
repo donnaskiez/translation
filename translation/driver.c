@@ -13,6 +13,7 @@ NTSTATUS ReadPhysicalAddress(
 	_In_ UINT32 Length
 )
 {
+	DEBUG_LOG( "ReadPhysicalAddress Params: Source: %llx, Destination %llx, Length %lx", Source, Destination, Length );
 	SIZE_T bytes_copied;
 	MM_COPY_ADDRESS copy_address = { 0 };
 
