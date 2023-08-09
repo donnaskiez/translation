@@ -2,6 +2,8 @@
 #include <wdftypes.h>
 #include <wdf.h>
 
+#include <intrin.h>
+
 #define DEBUG_LOG(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, 0, "[+] " fmt "\n", ##__VA_ARGS__)
 #define DEBUG_ERROR(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, 0, "[-] " fmt "\n", ##__VA_ARGS__)
 
@@ -209,6 +211,15 @@ void test(int* number)
 	DEBUG_LOG( "-------------------------TEST---------------------------" );
 }
 
+void bextr_test( int* number )
+{
+	UINT64 virtual_address = (UINT64)number;
+	UINT64 cr3 = __readcr3();
+	UINT64 cr3_physical = _bextr_u64( cr3, 12, 35 ) << 12;
+	UINT64 pml4_entry = _bextr_u64( virtual_address, 39, 9 ) * 8;
+	DEBUG_LOG( "cr3 physical: %llx", cr3_physical );
+}
+
 NTSTATUS DriverEntry(
 	_In_ PDRIVER_OBJECT DriverObject,
 	_In_ PUNICODE_STRING RegistryPath
@@ -219,6 +230,7 @@ NTSTATUS DriverEntry(
 	INT number = 420;
 	DEBUG_LOG( "number addr: %llx", (UINT64 ) &number);
 	test( &number );
+	bextr_test( &number );
 	UINT64 test = TranslateAddress(&number);
 	DEBUG_LOG( "Translation -- Virtual: %llx, Physical: %llx", (UINT64)&number, test);
 	__debugbreak();

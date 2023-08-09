@@ -138,7 +138,6 @@ TranslateAddress PROC
 	add rcx, rdi				; add them to get our final physical address
 
 	mov rax, rcx				; insert address into rax which holds the return value
-	int 1
 	jmp _end
 
 _LARGE_PAGE_1GB:
