@@ -123,8 +123,22 @@ TranslateAddress PROC
 	mov r8, 8
 	call ReadPhysicalAddress
 
-	mov rcx, [rsp + 24]
+	mov rcx, [rsp + 24]			; we now have our base pte
+	bt rcx, 0
+	sbb rcx, rcx
+	test rcx, rcx
+	je _end
 
+	mov rcx, [rsp + 24]			; extract our physical from the pte
+	shr rcx, 12
+	shl rcx, 26
+	shr rcx, 14
+	mov rdi, [rsp + 48]			; extract the page index from our virtual address
+	and rdi, 4095				; 111111111111 mask the first 12 bits
+	add rcx, rdi				; add them to get our final physical address
+
+	mov rax						; insert address into rax which holds the return value
+	jmp _end
 
 _LARGE_PAGE_1GB:
 

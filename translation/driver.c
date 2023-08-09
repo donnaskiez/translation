@@ -186,7 +186,7 @@ NTSTATUS DriverEntry(
 {
 	//Note: rewrite the c using the BEXTR instruction
 	UNREFERENCED_PARAMETER( RegistryPath );
-	INT number = 10;
+	INT number = 1337;
 	DEBUG_LOG( "number addr: %llx", (UINT64 ) &number);
     test( &number );
 	__debugbreak();
