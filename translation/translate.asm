@@ -4,7 +4,7 @@ extern ReadPhysicalAddress : proto
 
 .code
 
-TranslateAddress PROC
+TranslateAddress PROC			; note need to replace some left shifts with masks instead 
 
 	push rbp					; setup stack frame, dont really need to store rbp on the stack on x64
 	mov rbp, rsp
