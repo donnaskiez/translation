@@ -145,7 +145,7 @@ _LARGE_PAGE_1GB:
 	shr rcx, 30
 	shl rcx, 30
 	shl rcx, 12
-	shr rcx. 12
+	shr rcx, 12
 	shr rcx, 30
 	mov rdi, [rsp + 48]			; extract our pd index from our virtual address
 	shr rdi, 21
