@@ -141,11 +141,47 @@ TranslateAddress PROC
 	jmp _end
 
 _LARGE_PAGE_1GB:
+	mov rcx, [rsp + 16]			; extract our physical address from our pdpte
+	shr rcx, 30
+	shl rcx, 30
+	shl rcx, 12
+	shr rcx. 12
+	shr rcx, 30
+	mov rdi, [rsp + 48]			; extract our pd index from our virtual address
+	shr rdi, 21
+	and rdi, 511
+	push rax					; multiply our offset by 8 and add it to our pdpte 
+	mov rax, rdi
+	mov r10, 8
+	mul r10
+	mov rdi, rax
+	pop rax
+	add rdi, rcx
+	mov rax, rdi				; move final physical address into rax and jump to cleanup
+	jmp _end
 
 _LARGE_PAGE_2MB:
+	mov rcx, [rsp + 24]			; extract our physical address from our PDE
+	shr rcx, 21
+	shl rcx, 30
+	shl rcx, 5
+	shr rcx, 30
+	shr rcx, 5
+	mov rdi, [rsp + 48]			; extract our pt index and multiply it by 8
+	shr rdi, 12
+	and rdi, 511
+	push rax
+	mov rax, rdi
+	mov r10, 8
+	mul r10
+	mov rdi, rax
+	pop rax
+	add rdi, rcx
+	mov rax, rdi				; store final address in rax and jump to end
+	jmp _end
 
 _end:
-	add rsp, 32
+	add rsp, 32					; restore stack
 	pop rbp
 	ret
 

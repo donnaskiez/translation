@@ -15,7 +15,7 @@ NTSTATUS ReadPhysicalAddress(
 	_In_ UINT32 Length
 )
 {
-	DEBUG_LOG( "ReadPhysicalAddress Params: Source: %llx, Destination %llx, Length %lx", Source, Destination, Length );
+	DEBUG_LOG( "ReadPhysicalAddress Params: Source: %llx, Destination %llx, Length %lx", Source, (UINT64)Destination, Length );
 	SIZE_T bytes_copied;
 	MM_COPY_ADDRESS copy_address = { 0 };
 
@@ -33,7 +33,7 @@ NTSTATUS ReadPhysicalAddress(
 		return STATUS_ABANDONED;
 	};
 
-	DEBUG_LOG( "success: %llx", Destination );
+	DEBUG_LOG( "success: %llx", (UINT64)Destination );
 	return STATUS_SUCCESS;
 
 }
@@ -213,11 +213,19 @@ void test(int* number)
 
 void bextr_test( int* number )
 {
+	DEBUG_LOG( "----------------BEXTR TEST --------------------------" );
+
 	UINT64 virtual_address = (UINT64)number;
+
 	UINT64 cr3 = __readcr3();
-	UINT64 cr3_physical = _bextr_u64( cr3, 12, 35 ) << 12;
-	UINT64 pml4_entry = _bextr_u64( virtual_address, 39, 9 ) * 8;
-	DEBUG_LOG( "cr3 physical: %llx", cr3_physical );
+	UINT64 cr3_physical = _bextr_u64( cr3, 12, 36 ) << 12;
+	UINT64 pml4 = _bextr_u64( virtual_address, 39, 9 ) * 8;
+	UINT64 pml4e = 0;
+	DEBUG_LOG( "cr3 physical: %llx, pml4 entry: %llx", cr3_physical, pml4 );
+	ReadPhysicalAddress( cr3_physical + pml4, &pml4e, sizeof( UINT64 ) );
+
+
+		DEBUG_LOG( "----------------BEXTR TEST --------------------------" );
 }
 
 NTSTATUS DriverEntry(
@@ -231,8 +239,8 @@ NTSTATUS DriverEntry(
 	DEBUG_LOG( "number addr: %llx", (UINT64 ) &number);
 	test( &number );
 	bextr_test( &number );
-	UINT64 test = TranslateAddress(&number);
-	DEBUG_LOG( "Translation -- Virtual: %llx, Physical: %llx", (UINT64)&number, test);
+	//UINT64 test = TranslateAddress(&number);
+	//DEBUG_LOG( "Translation -- Virtual: %llx, Physical: %llx", (UINT64)&number, test);
 	__debugbreak();
 	return STATUS_SUCCESS;
 }
