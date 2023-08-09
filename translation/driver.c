@@ -5,7 +5,7 @@
 #define DEBUG_LOG(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, 0, "[+] " fmt "\n", ##__VA_ARGS__)
 #define DEBUG_ERROR(fmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, 0, "[-] " fmt "\n", ##__VA_ARGS__)
 
-extern TranslateAddress(INT* Number);
+extern UINT64 TranslateAddress(INT* Number);
 
 NTSTATUS ReadPhysicalAddress(
 	_In_ UINT64 Source,
@@ -131,6 +131,29 @@ typedef union _PD_ENTRY
 	UINT64 All;
 } PDE;
 
+typedef union _PT_ENTRY
+{
+	struct
+	{
+		UINT64 Present : 1;    /* 0     */
+		UINT64 ReadWrite : 1;    /* 1     */
+		UINT64 UserSupervisor : 1;    /* 2     */
+		UINT64 PageWriteThrough : 1;    /* 3     */
+		UINT64 PageCacheDisable : 1;    /* 4     */
+		UINT64 Accessed : 1;    /* 5     */
+		UINT64 Dirty : 1;    /* 6     */
+		UINT64 PageAttributeTable : 1;    /* 7     */
+		UINT64 Global : 1;    /* 8     */
+		UINT64 _Ignored0 : 3;    /* 11:9  */
+		UINT64 PhysicalAddress : 38;   /* 49:12 */
+		UINT64 _Reserved0 : 2;    /* 51:50 */
+		UINT64 _Ignored1 : 7;    /* 58:52 */
+		UINT64 ProtectionKey : 4;    /* 62:59 */
+		UINT64 ExecuteDisable : 1;    /* 63    */
+	} Bits;
+	UINT64 All;
+} PTE;
+
 void test(int* number)
 {
 	DEBUG_LOG( "--------------------------TEST-----------------------------" );
@@ -176,6 +199,13 @@ void test(int* number)
 		virtual.Bits.PtIndex,
 		( pde.Bits.PhysicalAddress << 12 ) + ( virtual.Bits.PtIndex * 8 ) );
 
+
+	PTE pte = { 0 };
+	ReadPhysicalAddress( ( pde.Bits.PhysicalAddress << 12 ) + ( virtual.Bits.PtIndex * 8 ), &pte, sizeof( PTE ));
+	UINT64 physical_address = ( pte.Bits.PhysicalAddress << 12 ) + ( virtual.Bits.PageIndex );
+
+	DEBUG_LOG( "Physical from c function: %llx", physical_address );
+
 	DEBUG_LOG( "-------------------------TEST---------------------------" );
 }
 
@@ -186,11 +216,11 @@ NTSTATUS DriverEntry(
 {
 	//Note: rewrite the c using the BEXTR instruction
 	UNREFERENCED_PARAMETER( RegistryPath );
-	INT number = 1337;
+	INT number = 420;
 	DEBUG_LOG( "number addr: %llx", (UINT64 ) &number);
-    test( &number );
+	test( &number );
+	UINT64 test = TranslateAddress(&number);
+	DEBUG_LOG( "Translation -- Virtual: %llx, Physical: %llx", (UINT64)&number, test);
 	__debugbreak();
-	TranslateAddress(&number);
-	DEBUG_LOG( "Done" );
 	return STATUS_SUCCESS;
 }

@@ -137,7 +137,8 @@ TranslateAddress PROC
 	and rdi, 4095				; 111111111111 mask the first 12 bits
 	add rcx, rdi				; add them to get our final physical address
 
-	mov rax						; insert address into rax which holds the return value
+	mov rax, rcx				; insert address into rax which holds the return value
+	int 1
 	jmp _end
 
 _LARGE_PAGE_1GB:
