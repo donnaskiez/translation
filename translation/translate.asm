@@ -8,8 +8,7 @@ TranslateAddress PROC
 
 	push rbp					; setup stack frame, dont really need to store rbp on the stack on x64
 	mov rbp, rsp
-	push rax
-	push rdx
+	sub rsp, 32
 
 	mov rax, cr3				; Get our cr3 physical address
 	shr rax, 12
@@ -25,7 +24,6 @@ TranslateAddress PROC
 	pop rax
 	add rcx, rax				; Add our cr3 physical with our pml4 offset
 
-	sub rsp, 8
 	lea rdx, [rsp + 8]			; Destination for pml4e after read
 	mov r8, 8					; length of copy 
 	call ReadPhysicalAddress
@@ -36,13 +34,11 @@ TranslateAddress PROC
 	test rbx, rbx
 	je _end						; if the present bit is not set, jump to end
 
-	int 1
-
 	mov rbx, [rsp + 8]			; get the result back can definitely do this more efficiently lol
 	shr rbx, 12		
 	shl rbx, 24
 	shr rbx, 12					; extract the next physical base address from our pml4e
-	mov rdi, [rsp + 40]
+	mov rdi, [rsp + 48]
 	shr rdi, 30			
 	and rdi, 511				; same thing as before, extract the pdpte offset from the virtual address
 
@@ -55,15 +51,87 @@ TranslateAddress PROC
 	add rdi, rbx				; add our pml4e and pdpt offset
 
 	mov rcx, rdi				; setup arguments for 2nd translation
-	sub rsp, 8
-	lea rdx, [rsp + 8]
+	lea rdx, [rsp + 16]
 	mov r8, 8
 	call ReadPhysicalAddress
 
-_end:
-	add rsp, 16
-	pop rdx
+	mov rcx, [rsp + 16]			; move destination value into rcx
+	bt rcx, 0					; validate the present bit is set
+	sbb rcx, rcx
+	test rcx, rcx
+	je _end						; if its not set, jump to end
+
+	mov rcx, [rsp + 16]
+	shr rcx, 6					; 7th bit tells us whether this pdpt entry points to a large page
+	bt rcx, 0
+	sbb rcx, rcx
+	test rcx, rcx
+	je _LARGE_PAGE_1GB				
+
+	mov rcx, [rsp + 16]
+	shr rcx, 12					; extract the physical base address from our pdpte
+	shl rcx, 24
+	shr rcx, 12		
+	mov rdi, [rsp + 48]			; extract our pdpte offset from the virtual address
+	shr rdi, 21
+	and rdi, 511
+
+	push rax					; multiply our pdpte inedex by 8
+	mov rax, rdi
+	mov r10, 8
+	mul r10
+	mov rdi, rax
 	pop rax
+	add rdi, rcx				; add our pdpte base and pdpte index
+
+	mov rcx, rdi				; setup our arguments with the new values
+	lea rdx, [rsp + 24]
+	mov r8, 8
+	call ReadPhysicalAddress
+
+	mov rcx, [rsp + 24]			; test for present bit
+	bt rcx, 0
+	sbb rcx, rcx
+	test rcx, rcx
+	je _end						
+
+	mov rcx, [rsp + 24]			; test to see if it points to a 2MB page
+	shr rcx, 6
+	bt rcx, 0
+	sbb rcx, rcx
+	test rcx, rcx
+	je _LARGE_PAGE_2MB			; it does, jump to 2mb page extraction
+
+	mov rcx, [rsp + 24]			; Now we have our PDE
+	shr rcx, 12
+	shl rcx, 26
+	shr rcx, 14					; extract the physical (49:12)
+	mov rdi, [rsp + 48]			; extract the table offset from virtual
+	shr rdi, 12
+	and rdi, 511
+
+	push rax					; multiply and add our offsets
+	mov rax, rdi
+	mov r10, 8
+	mul r10
+	mov rdi, rax
+	pop rax
+	add rdi, rcx
+
+	mov rcx, rdi				; setup arguments
+	lea rdx, [rsp + 24]
+	mov r8, 8
+	call ReadPhysicalAddress
+
+	mov rcx, [rsp + 24]
+
+
+_LARGE_PAGE_1GB:
+
+_LARGE_PAGE_2MB:
+
+_end:
+	add rsp, 32
 	pop rbp
 	ret
 

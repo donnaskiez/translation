@@ -31,7 +31,7 @@ NTSTATUS ReadPhysicalAddress(
 		return STATUS_ABANDONED;
 	};
 
-	DEBUG_LOG( "success: %llx", ( UINT64 )Destination );
+	DEBUG_LOG( "success: %llx", Destination );
 	return STATUS_SUCCESS;
 
 }
@@ -90,8 +90,50 @@ typedef union _PML4_ENTRY
 	UINT64 All;
 } PML4E;
 
+typedef union _PDPT_ENTRY
+{
+	struct
+	{
+		UINT64 Present : 1;    /* 0     */
+		UINT64 ReadWrite : 1;    /* 1     */
+		UINT64 UserSupervisor : 1;    /* 2     */
+		UINT64 PageWriteThrough : 1;    /* 3     */
+		UINT64 PageCacheDisable : 1;    /* 4     */
+		UINT64 Accessed : 1;    /* 5     */
+		UINT64 _Ignored0 : 1;    /* 6     */
+		UINT64 PageSize : 1;    /* 7     */
+		UINT64 _Ignored1 : 4;    /* 11:8  */
+		UINT64 PhysicalAddress : 40;   /* 51:12 */
+		UINT64 _Ignored2 : 11;   /* 62:52 */
+		UINT64 ExecuteDisable : 1;    /* 63    */
+	} Bits;
+	UINT64 All;
+} PDPTE;
+
+typedef union _PD_ENTRY
+{
+	struct
+	{
+		UINT64 Present : 1;    /* 0     */
+		UINT64 ReadWrite : 1;    /* 1     */
+		UINT64 UserSupervisor : 1;    /* 2     */
+		UINT64 PageWriteThrough : 1;    /* 3     */
+		UINT64 PageCacheDisable : 1;    /* 4     */
+		UINT64 Accessed : 1;    /* 5     */
+		UINT64 _Ignored0 : 1;    /* 6     */
+		UINT64 PageSize : 1;    /* 7     */
+		UINT64 _Ignored1 : 4;    /* 11:8  */
+		UINT64 PhysicalAddress : 38;   /* 49:12 */
+		UINT64 _Reserved0 : 2;    /* 51:50 */
+		UINT64 _Ignored2 : 11;   /* 62:52 */
+		UINT64 ExecuteDisable : 1;    /* 63    */
+	} Bits;
+	UINT64 All;
+} PDE;
+
 void test(int* number)
 {
+	DEBUG_LOG( "--------------------------TEST-----------------------------" );
     CR3 cr3 = { 0 };
     cr3.BitAddress = __readcr3();
     DEBUG_LOG( "Cr3: %llx, Physical Subpart: %llx, shifted: %llx", 
@@ -115,6 +157,26 @@ void test(int* number)
 		( pml4e.Bits.PhysicalAddress << 12 ), 
 		( virtual.Bits.PdptIndex ), 
 		( pml4e.Bits.PhysicalAddress << 12 ) + virtual.Bits.PdptIndex * 8 );
+
+	PDPTE pdpte = { 0 };
+	ReadPhysicalAddress( ( pml4e.Bits.PhysicalAddress << 12 ) + ( virtual.Bits.PdptIndex * 8 ), &pdpte, sizeof( PDPTE ) );
+
+	DEBUG_LOG("pdpte physical: %llx, pdpte phys shifted %llx, virtual pd index %llx, added toghether: llx",
+		pdpte.Bits.PhysicalAddress,
+		(pdpte.Bits.PhysicalAddress << 12 ),
+		virtual.Bits.PdIndex ),
+		( pdpte.Bits.PhysicalAddress << 12 ) + (virtual.Bits.PdIndex * 8);
+
+	PDE pde = { 0 };
+	ReadPhysicalAddress( ( pdpte.Bits.PhysicalAddress << 12 ) + ( virtual.Bits.PdIndex * 8 ), &pde, sizeof(PDE ));
+
+	DEBUG_LOG( "pde physical: %llx, pde phys shifted %llx, virtual pt index %llx, added together: %llx",
+		pde.Bits.PhysicalAddress,
+		( pde.Bits.PhysicalAddress << 12 ),
+		virtual.Bits.PtIndex,
+		( pde.Bits.PhysicalAddress << 12 ) + ( virtual.Bits.PtIndex * 8 ) );
+
+	DEBUG_LOG( "-------------------------TEST---------------------------" );
 }
 
 NTSTATUS DriverEntry(
@@ -122,10 +184,12 @@ NTSTATUS DriverEntry(
 	_In_ PUNICODE_STRING RegistryPath
 )
 {
+	//Note: rewrite the c using the BEXTR instruction
 	UNREFERENCED_PARAMETER( RegistryPath );
 	INT number = 10;
 	DEBUG_LOG( "number addr: %llx", (UINT64 ) &number);
     test( &number );
+	__debugbreak();
 	TranslateAddress(&number);
 	DEBUG_LOG( "Done" );
 	return STATUS_SUCCESS;
